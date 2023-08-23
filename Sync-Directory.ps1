@@ -6,22 +6,26 @@ param (
         HelpMessage="Enter path to existing directory, e.g.: C:\SourceDirectory")]
     [ValidateScript({Test-Path -Path $_ -PathType Container}, 
         ErrorMessage = "Provide valid path to existing directory, e.g.: C:\SourceDirectory")]
-    [string]
+    [System.IO.DirectoryInfo]
     $SourceDirectory,
 
     [Parameter(Mandatory,
         HelpMessage="Enter valid directory path, e.g.: C:\TargetDirectory")]
     [ValidateScript({Test-Path -Path $_ -IsValid}, 
         ErrorMessage = "Provide valid directory path, e.g.: C:\TargetDirectory")]
-    [string]
+    [System.IO.DirectoryInfo]
     $TargetDirectory,
 
     [Parameter(HelpMessage="Enter valid file path, e.g.: C:\Logs\Sync-File.log")]
     [PSDefaultValue(Help="`'Sync-Files.log`' in current directory")]
     [ValidateScript({Test-Path -Path $_ -IsValid}, 
         ErrorMessage = "Provide valid file path for log, e.g.: C:\Logs\Sync-File.log")]
-    [string]
-    $LogsPath = "Sync-Files $(Get-Date -Format "yyyyMMddTHHmmss").log"
+    [System.IO.FileInfo]
+    $LogsPath = "Sync-Files $(Get-Date -Format "yyyyMMddTHHmmss").log",
+
+    [Parameter(HelpMessage="Provide PSSession object.")]
+    [System.Management.Automation.Runspaces.PSSession]
+    $RemoteHostSession
 )
 
 
@@ -68,11 +72,6 @@ function Add-LogMessage {
 $defAddLogMessage = ${function:Add-LogMessage}.ToString();
 #endregion
 
-
-# Normalize input parameters
-$SourceDirectory = $SourceDirectory.TrimEnd('\', '/');
-$TargetDirectory = $TargetDirectory.TrimEnd('\', '/');
-
 if (-not (Test-Path -Path $LogsPath -PathType Leaf)) 
 {
     try 
@@ -87,6 +86,11 @@ if (-not (Test-Path -Path $LogsPath -PathType Leaf))
 }
 $LogsPath = Get-ChildItem -Path $LogsPath | Select-Object -ExpandProperty FullName;
 
+# Create target directory
+if (-not (Test-Path -Path $TargetDirectory)) 
+{
+    New-Item -Path $TargetDirectory -ItemType Directory;
+}
 
 # Collect source directory information
 $sourceFiles = New-Object -TypeName "System.Collections.ArrayList";
